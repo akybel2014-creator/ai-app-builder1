@@ -1,3 +1,4 @@
+import { sanitizeConnectors } from './connectors';
 import type { Project, AppSettings, ActivityLogEntry } from '@/types';
 import { STORAGE_KEYS } from '@/lib/constants';
 
@@ -147,6 +148,7 @@ function normalizeProjectList(parsed: unknown, filterUserId?: string): Project[]
         type: p.type || 'webapp',
         status: p.status || 'draft',
         instructions: Array.isArray(p.instructions) ? p.instructions : [],
+        connectors: sanitizeConnectors(p.connectors),
         previewHtml: typeof p.previewHtml === 'string' ? p.previewHtml : null,
         createdAt: p.createdAt || new Date().toISOString(),
         updatedAt: p.updatedAt || p.createdAt || new Date().toISOString(),

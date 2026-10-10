@@ -39,6 +39,11 @@ export interface ActivityLogEntry {
   codeVersion?: string;
 }
 
+export interface ProjectConnector {
+  id: string;
+  notes?: string;
+}
+
 export interface Project {
   id: string;
   userId?: string;
@@ -47,6 +52,7 @@ export interface Project {
   type: ProjectType;
   status: ProjectStatus;
   instructions: Instruction[];
+  connectors?: ProjectConnector[];
   previewHtml: string | null;
   codeVersion?: string;
   createdAt: string;

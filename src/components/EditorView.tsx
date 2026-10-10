@@ -4,6 +4,8 @@ import { PROJECT_TYPE_LABELS } from '@/lib/constants';
 import { computeCodeVersionReference, isExportActivityEntry } from '@/lib/storage';
 import { showToast } from '@/lib/toast';
 import ActivityLog from '@/components/ActivityLog';
+import ConnectorsPanel from '@/components/ConnectorsPanel';
+import { sanitizeConnectors } from '@/lib/connectors';
 import {
   ArrowLeft,
   Send,
@@ -25,6 +27,7 @@ import {
   X,
   FileText,
   Lock,
+  Plug,
 } from 'lucide-react';
 
 interface EditorViewProps {
@@ -48,7 +51,7 @@ interface EditorViewProps {
 }
 
 type PreviewDevice = 'desktop' | 'tablet' | 'mobile';
-type RightPanelTab = 'preview' | 'code';
+type RightPanelTab = 'preview' | 'code' | 'connectors';
 
 const PLACEHOLDER_HTML = `<!DOCTYPE html>
 <html lang="it">
@@ -256,6 +259,7 @@ export default function EditorView({
             description: project.description,
             type: project.type,
             instructions: project.instructions,
+            connectors: project.connectors ?? [],
           },
           aiSettings: settings?.ai,
         }),
@@ -601,6 +605,12 @@ export default function EditorView({
               icon={Code2}
               label="Codice"
             />
+            <TabButton
+              active={activeTab === 'connectors'}
+              onClick={() => setActiveTab('connectors')}
+              icon={Plug}
+              label={`Connettori${project.connectors?.length ? ` (${project.connectors.length})` : ''}`}
+            />
           </div>
 
           {/* Device selector (preview only) */}
@@ -671,6 +681,13 @@ export default function EditorView({
                 />
               </div>
             </div>
+          ) : activeTab === 'connectors' ? (
+            <ConnectorsPanel
+              connectors={project.connectors ?? []}
+              onChange={(next) =>
+                onUpdateProject(project.id, { connectors: sanitizeConnectors(next) })
+              }
+            />
           ) : (
             <div className="h-full overflow-y-auto scrollbar-thin">
               <pre className="p-4 text-sm font-mono text-surface-300 leading-relaxed whitespace-pre-wrap break-words">

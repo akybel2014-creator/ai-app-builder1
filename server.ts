@@ -19,6 +19,7 @@ import {
   type BillingPeriod,
 } from './src/lib/plans.ts';
 import { renderRouteHtml } from './src/entry-server.tsx';
+import { getConnector, sanitizeConnectors } from './src/lib/connectors.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT) || 3000;
@@ -48,6 +49,7 @@ interface ServerProjectRecord {
     projectName?: string;
     userId?: string;
   }>;
+  connectors?: Array<{ id: string; notes: string }>;
   previewHtml: string | null;
   codeVersion?: string;
   createdAt: string;
@@ -191,6 +193,7 @@ export function validateAiGenerationInput(body: unknown): {
     description: string;
     type: string;
     instructions: Array<{ text: string }>;
+    connectors: Array<{ id: string; notes: string }>;
   };
 } {
   if (!body || typeof body !== 'object') {
@@ -263,6 +266,7 @@ export function validateAiGenerationInput(body: unknown): {
       description,
       type: type.slice(0, 32),
       instructions: sanitizedInstructions,
+      connectors: sanitizeConnectors(p.connectors),
     },
   };
 }
@@ -1185,6 +1189,7 @@ async function startServer() {
           ? proj.status
           : 'draft',
       instructions: Array.isArray(proj.instructions) ? proj.instructions : [],
+      connectors: sanitizeConnectors(proj.connectors),
       previewHtml: typeof proj.previewHtml === 'string' ? proj.previewHtml.slice(0, 250000) : null,
       codeVersion: typeof proj.codeVersion === 'string' ? proj.codeVersion.slice(0, 64) : 'v1.0',
       createdAt: typeof proj.createdAt === 'string' ? proj.createdAt : new Date().toISOString(),
@@ -1274,6 +1279,7 @@ async function startServer() {
           ? proj.status
           : 'draft',
       instructions: Array.isArray(proj.instructions) ? proj.instructions : [],
+      connectors: sanitizeConnectors(proj.connectors),
       previewHtml: typeof proj.previewHtml === 'string' ? proj.previewHtml.slice(0, 250000) : null,
       codeVersion: typeof proj.codeVersion === 'string' ? proj.codeVersion.slice(0, 64) : 'v1.0',
       createdAt: typeof proj.createdAt === 'string' ? proj.createdAt : new Date().toISOString(),
@@ -1383,6 +1389,15 @@ async function startServer() {
       .map((inst, i) => `${i + 1}. ${inst.text}`)
       .join('\n');
 
+    const connectorsList = sanitizedProject.connectors
+      .map((c) => {
+        const def = getConnector(c.id);
+        if (!def) return '';
+        return `- ${def.name} (${def.description})${c.notes ? ` Indicazioni dell'utente: ${c.notes}` : ''}`;
+      })
+      .filter(Boolean)
+      .join('\n');
+
     const systemPrompt = [
       'Sei un Senior Frontend Architect e Designer UI/UX.',
       'Genera un file HTML5 singolo, completo, moderno, responsivo e interattivo (con CSS moderno o Tailwind CDN e JavaScript vanilla integrato) per l\'applicazione richiesta.',
@@ -1394,6 +1409,9 @@ async function startServer() {
       `Categoria: ${sanitizedProject.type}`,
       `Descrizione: ${sanitizedProject.description}`,
       instructionsList ? `Istruzioni iterative:\n${instructionsList}` : '',
+      connectorsList
+        ? `Connettori attivi (servizi da integrare nell'app: prevedi nell'interfaccia le schermate e i controlli necessari e scrivi il codice di integrazione con segnaposto chiaramente indicati per chiavi API e credenziali, senza mai inserire segreti reali):\n${connectorsList}`
+        : '',
     ]
       .filter(Boolean)
       .join('\n\n');
