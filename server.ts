@@ -1231,6 +1231,88 @@ async function startServer() {
     res.json({ deleted: true });
   });
 
+  app.get('/api/admin/overview', (req: Request, res: Response) => {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    res.setHeader('Cache-Control', 'no-store');
+    const cookies = parseCookies(req.headers.cookie);
+    const token = cookies[ADMIN_COOKIE_NAME];
+    if (!token || !activeAdminSessions.has(token)) {
+      res.status(401).json({ error: 'Non autorizzato.' });
+      return;
+    }
+
+    const users = readServerUsers();
+    const projects = readServerProjects();
+
+    const projectCountByUser = new Map<string, number>();
+    const projectsByStatus = { draft: 0, generating: 0, generated: 0, error: 0 };
+    let instructionsTotal = 0;
+    for (const proj of projects) {
+      projectCountByUser.set(proj.userId, (projectCountByUser.get(proj.userId) || 0) + 1);
+      projectsByStatus[proj.status] = (projectsByStatus[proj.status] || 0) + 1;
+      instructionsTotal += Array.isArray(proj.instructions) ? proj.instructions.length : 0;
+    }
+
+    const planUsers: Record<string, number> = {};
+    const userRows = users
+      .map((u) => {
+        const planId = u.activeSubscription?.planId ?? null;
+        if (planId) planUsers[planId] = (planUsers[planId] || 0) + 1;
+        return {
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          emailVerified: Boolean(u.emailVerified),
+          createdAt: u.createdAt,
+          planId,
+          billingPeriod: u.activeSubscription?.billingPeriod ?? null,
+          projectCount: projectCountByUser.get(u.id) || 0,
+        };
+      })
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    const plans = PLAN_ORDER.map((id) => ({
+      id,
+      name: TRUSTED_PLANS[id].translations.it.name,
+      tier: TRUSTED_PLANS[id].tier,
+      monthlyAmount: TRUSTED_PLANS[id].pricing.monthly.amount,
+      users: planUsers[id] || 0,
+    }));
+
+    res.json({
+      stats: {
+        usersTotal: users.length,
+        usersVerified: users.filter((u) => u.emailVerified).length,
+        subscriptionsActive: users.filter((u) => u.activeSubscription).length,
+        projectsTotal: projects.length,
+        projectsByStatus,
+        instructionsTotal,
+      },
+      users: userRows,
+      plans,
+      projectsByType: Object.entries(
+        projects.reduce<Record<string, number>>((acc, proj) => {
+          acc[proj.type] = (acc[proj.type] || 0) + 1;
+          return acc;
+        }, {}),
+      ).map(([type, count]) => ({ type, count })),
+      recentProjects: [...projects]
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        .slice(0, 8)
+        .map((proj) => ({
+          id: proj.id,
+          name: proj.name,
+          type: proj.type,
+          ownerName:
+            proj.userId === 'admin-it'
+              ? 'Amministratore'
+              : users.find((u) => u.id === proj.userId)?.name || 'Utente eliminato',
+          status: proj.status,
+          updatedAt: proj.updatedAt,
+        })),
+    });
+  });
+
   app.get('/api/admin/projects', (req: Request, res: Response) => {
     res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
     const cookies = parseCookies(req.headers.cookie);

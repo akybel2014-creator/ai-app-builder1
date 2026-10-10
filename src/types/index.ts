@@ -101,3 +101,44 @@ export interface ToastMessage {
   type: 'success' | 'error' | 'info' | 'warning';
   message: string;
 }
+
+export interface AdminOverviewUser {
+  id: string;
+  name: string;
+  email: string;
+  emailVerified: boolean;
+  createdAt: string;
+  planId: string | null;
+  billingPeriod: string | null;
+  projectCount: number;
+}
+
+export interface AdminOverviewPlan {
+  id: string;
+  name: string;
+  tier: 'free' | 'paid';
+  monthlyAmount: number | null;
+  users: number;
+}
+
+export interface AdminOverview {
+  stats: {
+    usersTotal: number;
+    usersVerified: number;
+    subscriptionsActive: number;
+    projectsTotal: number;
+    projectsByStatus: Record<'draft' | 'generating' | 'generated' | 'error', number>;
+    instructionsTotal: number;
+  };
+  users: AdminOverviewUser[];
+  plans: AdminOverviewPlan[];
+  projectsByType: Array<{ type: string; count: number }>;
+  recentProjects: Array<{
+    id: string;
+    name: string;
+    type: string;
+    ownerName: string;
+    status: string;
+    updatedAt: string;
+  }>;
+}

@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type {
   AdminSection,
   Project,
   AppSettings,
   AIProvider,
   ThemeAccent,
+  AdminOverview,
 } from '@/types';
 import { PROJECT_TYPE_LABELS, AI_PROVIDERS } from '@/lib/constants';
 import Dashboard from '@/components/Dashboard';
@@ -122,11 +123,11 @@ const ACCENT_PALETTES: Record<
 const SECTION_TITLES: Record<AdminSection, { title: string; subtitle: string }> = {
   overview: {
     title: 'Panoramica',
-    subtitle: 'Stato reale della piattaforma, progetti locali e integrazioni configurate',
+    subtitle: 'Stato reale della piattaforma: utenti registrati, progetti di tutti gli utenti e integrazioni',
   },
   users: {
     title: 'Utenti',
-    subtitle: 'Gestione sessioni e stato del servizio di autenticazione utenti',
+    subtitle: 'Clienti registrati sul sito, piano attivo e numero di progetti',
   },
   projects: {
     title: 'Progetti',
@@ -138,7 +139,7 @@ const SECTION_TITLES: Record<AdminSection, { title: string; subtitle: string }> 
   },
   credits: {
     title: 'Crediti e piani',
-    subtitle: 'Stato del sistema di contabilizzazione crediti, piani e consumi API',
+    subtitle: 'Distribuzione degli utenti per piano e stato della contabilizzazione crediti',
   },
   settings: {
     title: 'Impostazioni',
@@ -165,6 +166,37 @@ export default function AdminPanel({
 }: AdminPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [overview, setOverview] = useState<AdminOverview | null>(null);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
+
+  // Dati reali dal server (utenti registrati, progetti di tutti gli utenti, piani)
+  useEffect(() => {
+    if (activeSection !== 'overview' && activeSection !== 'users' && activeSection !== 'credits') {
+      return;
+    }
+    let cancelled = false;
+    fetch('/api/admin/overview', { credentials: 'include', headers: { Accept: 'application/json' } })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(res.status === 401 ? 'Sessione admin scaduta: accedi di nuovo.' : 'Errore nel caricamento dei dati.');
+        return (await res.json()) as AdminOverview;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setOverview(data);
+        setOverviewError(null);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setOverviewError(err instanceof Error ? err.message : 'Errore nel caricamento dei dati.');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSection]);
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('it-IT');
+  };
 
   const accentKey: ThemeAccent = settings.theme?.accentColor || 'blue';
   const sidebarStyle = settings.theme?.sidebarStyle || 'navy';
@@ -264,6 +296,31 @@ export default function AdminPanel({
       percentage: Math.round((count / projects.length) * 100),
     }));
   }, [projects]);
+
+  // Se il server risponde, i due riquadri mostrano i dati di TUTTI gli utenti; altrimenti i progetti locali.
+  const categoryRows = useMemo(() => {
+    if (!overview) return categoryBreakdown;
+    const total = overview.projectsByType.reduce((acc, t) => acc + t.count, 0);
+    if (total === 0) return [];
+    return overview.projectsByType.map((t) => ({
+      type: t.type as Project['type'],
+      label: PROJECT_TYPE_LABELS[t.type as Project['type']] ?? t.type,
+      count: t.count,
+      percentage: Math.round((t.count / total) * 100),
+    }));
+  }, [overview, categoryBreakdown]);
+
+  const activityRows = useMemo(() => {
+    if (!overview) return recentActivities;
+    return overview.recentProjects.map((rp) => ({
+      id: `srv-${rp.id}`,
+      user: rp.ownerName,
+      action: `Progetto: ${rp.name} (${PROJECT_TYPE_LABELS[rp.type as Project['type']] ?? rp.type})`,
+      projectName: rp.name,
+      timestamp: rp.updatedAt,
+      status: rp.status as Project['status'],
+    }));
+  }, [overview, recentActivities]);
 
   const sidebarBgClass =
     sidebarStyle === 'navy' ? 'bg-[#0B192C] border-[#1E293B]' : 'bg-slate-900 border-slate-800';
@@ -569,9 +626,13 @@ export default function AdminPanel({
                     <Users className="w-4 h-4 text-slate-400" />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-slate-900">1 sessione attiva</div>
+                    <div className="text-2xl font-bold text-slate-900">
+                      {overview ? overview.stats.usersTotal : overviewError ? '—' : '…'}
+                    </div>
                     <p className="text-xs text-slate-500 mt-1">
-                      Database utenti non collegato · Solo amministratore locale
+                      {overview
+                        ? `${overview.stats.usersVerified} con email verificata · ${overview.stats.subscriptionsActive} con piano attivo`
+                        : overviewError || 'Caricamento dati dal server…'}
                     </p>
                   </div>
                 </div>
@@ -585,11 +646,15 @@ export default function AdminPanel({
                     <FolderKanban className={`w-4 h-4 ${palette.textPrimary}`} />
                   </div>
                   <div>
-                    <div className="text-2xl font-bold text-slate-900">{projects.length}</div>
+                    <div className="text-2xl font-bold text-slate-900">
+                      {overview ? overview.stats.projectsTotal : projects.length}
+                    </div>
                     <p className="text-xs text-slate-500 mt-1">
-                      {projects.length === 0
-                        ? 'Nessun progetto salvato in localStorage'
-                        : `${projects.reduce((acc, p) => acc + p.instructions.length, 0)} istruzioni totali registrate`}
+                      {overview
+                        ? `${overview.stats.projectsByStatus.generated} generati · ${overview.stats.instructionsTotal} istruzioni totali (tutti gli utenti)`
+                        : projects.length === 0
+                          ? 'Nessun progetto salvato'
+                          : `${projects.reduce((acc, p) => acc + p.instructions.length, 0)} istruzioni totali registrate`}
                     </p>
                   </div>
                 </div>
@@ -647,19 +712,19 @@ export default function AdminPanel({
                     <Activity className="w-4 h-4 text-violet-600" />
                   </div>
 
-                  {categoryBreakdown.length === 0 ? (
+                  {categoryRows.length === 0 ? (
                     <div className="py-10 text-center space-y-2 border border-dashed border-slate-200 rounded-lg bg-slate-50/50 px-4">
                       <p className="text-sm font-medium text-slate-700">
                         Nessun dato di attività disponibile
                       </p>
                       <p className="text-xs text-slate-500 leading-relaxed">
-                        Il grafico viene generato solo in presenza di progetti reali salvati nel browser.
-                        Crea un progetto nella sezione Progetti per visualizzare le metriche.
+                        Il grafico viene generato solo in presenza di progetti reali.
+                        Quando gli utenti creeranno progetti, qui vedrai le categorie più usate.
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-3 pt-2">
-                      {categoryBreakdown.map((item) => (
+                      {categoryRows.map((item) => (
                         <div key={item.type} className="space-y-1.5">
                           <div className="flex items-center justify-between text-xs">
                             <span className="font-medium text-slate-700">{item.label}</span>
@@ -691,7 +756,7 @@ export default function AdminPanel({
                     <Clock className="w-4 h-4 text-slate-400" />
                   </div>
 
-                  {recentActivities.length === 0 ? (
+                  {activityRows.length === 0 ? (
                     <div className="py-10 text-center space-y-2 border border-dashed border-slate-200 rounded-lg bg-slate-50/50 px-4">
                       <p className="text-sm font-medium text-slate-700">
                         Nessuna attività registrata
@@ -712,7 +777,7 @@ export default function AdminPanel({
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-xs">
-                          {recentActivities.map((act) => (
+                          {activityRows.map((act) => (
                             <tr key={act.id} className="hover:bg-slate-50/80">
                               <td className="py-3 pr-3 font-medium text-slate-800 whitespace-nowrap">
                                 {act.user}
@@ -765,14 +830,11 @@ export default function AdminPanel({
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="space-y-1">
                     <h2 className="text-base font-bold text-slate-900">
-                      Stato Autenticazione e Database Utenti
+                      Utenti registrati{overview ? ` (${overview.users.length})` : ''}
                     </h2>
                     <p className="text-sm text-slate-600 max-w-2xl leading-relaxed">
-                      L&apos;applicazione utilizza attualmente una sessione amministratore protetta lato server
-                      tramite cookie <code className="text-xs font-mono bg-slate-100 px-1.5 py-0.5 rounded">HttpOnly</code> e
-                      memorizzazione locale nel browser (<code className="text-xs font-mono bg-slate-100 px-1.5 py-0.5 rounded">localStorage</code>).
-                      Il pacchetto <code className="text-xs font-mono bg-slate-100 px-1.5 py-0.5 rounded">@supabase/supabase-js</code> è
-                      installato nelle dipendenze ma non è ancora collegato a un&apos;istanza database esterna.
+                      Account creati dai clienti dal sito pubblico, letti dal server. Le password non
+                      sono mai visualizzate: sul server restano solo come hash.
                     </p>
                   </div>
                   <span className="text-xs font-medium text-emerald-700 flex items-center gap-1.5">
@@ -781,33 +843,65 @@ export default function AdminPanel({
                   </span>
                 </div>
 
+                {overviewError && (
+                  <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    <AlertCircle className="w-4 h-4" />
+                    {overviewError}
+                  </div>
+                )}
+
                 <div className="overflow-x-auto pt-2">
                   <table className="w-full text-left border-collapse text-sm">
                     <thead>
                       <tr className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        <th className="py-3 pr-4">Profilo</th>
-                        <th className="py-3 px-4">Ruolo</th>
-                        <th className="py-3 px-4">Lingua Interfaccia</th>
-                        <th className="py-3 px-4">Archiviazione Progetti</th>
-                        <th className="py-3 pl-4 text-right">Stato</th>
+                        <th className="py-3 pr-4">Nome</th>
+                        <th className="py-3 px-4">Email</th>
+                        <th className="py-3 px-4">Piano</th>
+                        <th className="py-3 px-4 text-right">Progetti</th>
+                        <th className="py-3 px-4">Registrato il</th>
+                        <th className="py-3 pl-4 text-right">Email</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-sm">
-                      <tr>
-                        <td className="py-3.5 pr-4 font-semibold text-slate-900">
-                          Amministratore / Proprietario
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-600">Proprietario Piattaforma</td>
-                        <td className="py-3.5 px-4 text-slate-600">Italiano (Fissa)</td>
-                        <td className="py-3.5 px-4 text-slate-600">
-                          Browser localStorage ({projects.length} progett{projects.length === 1 ? 'o' : 'i'})
-                        </td>
-                        <td className="py-3.5 pl-4 text-right font-medium text-emerald-700">
-                          Autenticato
-                        </td>
+                      <tr className="bg-slate-50/60">
+                        <td className="py-3.5 pr-4 font-semibold text-slate-900">Amministratore</td>
+                        <td className="py-3.5 px-4 text-slate-600">Proprietario piattaforma</td>
+                        <td className="py-3.5 px-4 text-slate-600">—</td>
+                        <td className="py-3.5 px-4 text-right text-slate-600">{projects.length}</td>
+                        <td className="py-3.5 px-4 text-slate-600">—</td>
+                        <td className="py-3.5 pl-4 text-right font-medium text-emerald-700">Autenticato</td>
                       </tr>
+                      {overview?.users.map((u) => {
+                        const plan = overview.plans.find((pl) => pl.id === u.planId);
+                        return (
+                          <tr key={u.id}>
+                            <td className="py-3.5 pr-4 font-semibold text-slate-900">{u.name}</td>
+                            <td className="py-3.5 px-4 text-slate-600">{u.email}</td>
+                            <td className="py-3.5 px-4 text-slate-600">
+                              {plan ? `${plan.name}${u.billingPeriod === 'annual' ? ' (annuale)' : ''}` : 'Nessuno'}
+                            </td>
+                            <td className="py-3.5 px-4 text-right text-slate-600">{u.projectCount}</td>
+                            <td className="py-3.5 px-4 text-slate-600">{formatDate(u.createdAt)}</td>
+                            <td
+                              className={`py-3.5 pl-4 text-right font-medium ${
+                                u.emailVerified ? 'text-emerald-700' : 'text-amber-700'
+                              }`}
+                            >
+                              {u.emailVerified ? 'Verificata' : 'Da verificare'}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
+                  {overview && overview.users.length === 0 && (
+                    <p className="text-sm text-slate-500 py-6 text-center">
+                      Nessun cliente registrato finora.
+                    </p>
+                  )}
+                  {!overview && !overviewError && (
+                    <p className="text-sm text-slate-500 py-6 text-center">Caricamento…</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -954,16 +1048,52 @@ export default function AdminPanel({
 
                 <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-2xs space-y-2">
                   <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                    Istruzioni Registrate Localmente
+                    Istruzioni registrate
                   </span>
                   <div className="text-xl font-bold text-slate-900">
-                    {projects.reduce((acc, p) => acc + p.instructions.length, 0)} prompt
+                    {overview
+                      ? overview.stats.instructionsTotal
+                      : projects.reduce((acc, p) => acc + p.instructions.length, 0)}{' '}
+                    prompt
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    Totale reale delle istruzioni testuali aggiunte nei {projects.length} progetti
-                    attualmente archiviati nel browser.
+                    {overview
+                      ? `Totale delle istruzioni testuali aggiunte in ${overview.stats.projectsTotal} progetti di tutti gli utenti.`
+                      : `Totale delle istruzioni testuali aggiunte nei ${projects.length} progetti archiviati nel browser.`}
                   </p>
                 </div>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-2xs space-y-3">
+                <h2 className="text-base font-bold text-slate-900">Utenti per piano</h2>
+                {overview ? (
+                  <table className="w-full text-left border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                        <th className="py-3 pr-4">Piano</th>
+                        <th className="py-3 px-4">Prezzo mensile</th>
+                        <th className="py-3 pl-4 text-right">Utenti</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {overview.plans.map((pl) => (
+                        <tr key={pl.id}>
+                          <td className="py-3 pr-4 font-semibold text-slate-900">{pl.name}</td>
+                          <td className="py-3 px-4 text-slate-600">
+                            {pl.tier === 'free'
+                              ? 'Gratuito'
+                              : pl.monthlyAmount === null
+                                ? 'Da configurare'
+                                : `${pl.monthlyAmount} €`}
+                          </td>
+                          <td className="py-3 pl-4 text-right text-slate-900 font-medium">{pl.users}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <p className="text-sm text-slate-500">{overviewError || 'Caricamento…'}</p>
+                )}
               </div>
 
               <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-2xs space-y-3">

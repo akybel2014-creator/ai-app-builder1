@@ -91,7 +91,7 @@ export default function App(props: AppProps) {
     return r?.isWorkspace ? 'workspace' : 'admin';
   });
 
-  // Customer session state (from /api/auth/me)
+  // Customer session state (from /api/auth/session)
   const [customerUser, setCustomerUser] = useState<PublicAuthenticatedUser | null>(null);
   const [customerAuthLoading, setCustomerAuthLoading] = useState<boolean>(true);
   // Track if an authenticated administrator explicitly entered workspace from /admin
@@ -113,7 +113,7 @@ export default function App(props: AppProps) {
       setCustomerAuthLoading(true);
       try {
         const [userRes, adminRes] = await Promise.all([
-          fetch('/api/auth/me', {
+          fetch('/api/auth/session', {
             method: 'GET',
             credentials: 'same-origin',
             headers: { Accept: 'application/json' },
