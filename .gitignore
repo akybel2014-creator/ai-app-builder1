@@ -26,3 +26,7 @@ dist-ssr
 .data
 .env.*
 !.env.example
+
+# File generati dalla build (prerender)
+public/robots.txt
+public/sitemap.xml
