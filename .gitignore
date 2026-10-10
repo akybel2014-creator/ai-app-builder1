@@ -21,3 +21,8 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Dati runtime (utenti, progetti, log): non versionare
+.data
+.env.*
+!.env.example

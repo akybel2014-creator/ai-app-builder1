@@ -21,7 +21,7 @@ import {
 import { renderRouteHtml } from './src/entry-server.tsx';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Active admin sessions in memory (HttpOnly cookie verification)
@@ -775,10 +775,14 @@ async function startServer() {
     const submitted = typeof req.body?.passphrase === 'string' ? req.body.passphrase.trim() : '';
     const customExpected = process.env.ADMIN_PASSWORD ? process.env.ADMIN_PASSWORD.trim() : '';
 
-    const valid =
-      submitted === 'admin' ||
-      submitted === '' ||
-      (customExpected.length > 0 && submitted === customExpected);
+    // Se ADMIN_PASSWORD e' impostata, e' l'unica credenziale valida.
+    // Il login demo ("admin" / vuoto) e' consentito solo fuori produzione e senza password configurata.
+    const demoAllowed = !isProduction && customExpected.length === 0;
+    const passwordMatches =
+      customExpected.length > 0 &&
+      submitted.length === customExpected.length &&
+      crypto.timingSafeEqual(Buffer.from(submitted), Buffer.from(customExpected));
+    const valid = passwordMatches || (demoAllowed && (submitted === 'admin' || submitted === ''));
 
     if (!valid) {
       res.status(401).json({
@@ -793,7 +797,7 @@ async function startServer() {
 
     res.setHeader(
       'Set-Cookie',
-      `${ADMIN_COOKIE_NAME}=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400`,
+      `${ADMIN_COOKIE_NAME}=${sessionToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${isProduction ? '; Secure' : ''}`,
     );
     res.json({ authenticated: true, locale: 'it' });
   });
