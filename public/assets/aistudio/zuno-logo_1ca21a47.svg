@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="500" height="144" viewBox="0 0 500 144" role="img" aria-labelledby="title desc">
+  <title id="title">Zuno</title>
+  <desc id="desc">Orange Z symbol inside a white rounded square, followed by the Zuno wordmark.</desc>
+  <rect x="24" y="28" width="88" height="88" rx="24" fill="#FFFFFF" stroke="#F1E7DF" stroke-width="2"/>
+  <path d="M48 53h40L56 91h40" fill="none" stroke="#F26A2E" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="139" y="94" fill="#252321" font-family="Inter, Manrope, Avenir, Arial, sans-serif" font-size="64" font-weight="700" letter-spacing="-2">Zuno</text>
+</svg>

@@ -17,6 +17,7 @@ import {
   CONNECTOR_NOTES_MAX,
   type ConnectorCategory,
 } from '@/lib/connectors';
+import GeminiConnectorCard from '@/components/GeminiConnectorCard';
 
 type Filter = 'all' | 'active' | ConnectorCategory;
 
@@ -109,6 +110,12 @@ export default function ConnectorsPanel({ connectors, onChange }: ConnectorsPane
             </button>
           ))}
         </div>
+
+        {(filter === 'all' || filter === 'ai') && (
+          <div className="mb-6">
+            <GeminiConnectorCard />
+          </div>
+        )}
 
         {visible.length === 0 ? (
           <p className="text-sm text-surface-500 py-10 text-center">

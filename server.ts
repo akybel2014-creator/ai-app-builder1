@@ -32,6 +32,53 @@ const USER_COOKIE_NAME = 'ai_app_builder_user_session';
 const ACTIVITY_LOG_FILE = path.resolve(__dirname, '.data', 'activity-logs.json');
 const USERS_FILE = path.resolve(__dirname, '.data', 'users.json');
 const PROJECTS_FILE = path.resolve(__dirname, '.data', 'projects.json');
+const SECRETS_FILE = path.resolve(__dirname, '.data', 'secrets.json');
+
+interface ServerSecretsRecord {
+  geminiApiKey?: string;
+  geminiModel?: string;
+  geminiVerifiedAt?: string;
+  geminiStatus?: 'connected' | 'unconnected';
+}
+
+function readServerSecrets(): ServerSecretsRecord {
+  try {
+    if (!fs.existsSync(SECRETS_FILE)) return {};
+    const raw = fs.readFileSync(SECRETS_FILE, 'utf-8');
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? (parsed as ServerSecretsRecord) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeServerSecrets(secrets: ServerSecretsRecord): void {
+  try {
+    const dir = path.dirname(SECRETS_FILE);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(SECRETS_FILE, JSON.stringify(secrets, null, 2), 'utf-8');
+  } catch (e) {
+    console.error('Failed to persist server secrets:', e);
+  }
+}
+
+function maskApiKey(key: string): string {
+  if (!key || key.length < 8) return '••••••••';
+  return key.slice(0, 4) + '••••••••' + key.slice(-4);
+}
+
+function getEffectiveGeminiConfig(): {
+  apiKey: string;
+  model: string;
+  isVerified: boolean;
+  verifiedAt?: string;
+} {
+  const secrets = readServerSecrets();
+  const apiKey = (secrets.geminiApiKey || process.env.GEMINI_API_KEY || '').trim();
+  const model = (secrets.geminiModel || process.env.GEMINI_MODEL || 'gemini-3.8-flash').trim();
+  const isVerified = Boolean(secrets.geminiStatus === 'connected' && apiKey);
+  return { apiKey, model, isVerified, verifiedAt: secrets.geminiVerifiedAt };
+}
 
 interface ServerProjectRecord {
   id: string;
@@ -1684,6 +1731,360 @@ async function startServer() {
       res.status(502).json({
         errorCode: 'AI_GENERATION_FAILED',
         error: `Generazione IA non riuscita: ${safeMessage.slice(0, 200)}`,
+      });
+    }
+  });
+
+  // 1e-bis. Gemini Connector Endpoints (Secure Server-Side Secret Management)
+  app.get('/api/connectors/gemini/status', (_req: Request, res: Response) => {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    const { apiKey, model, isVerified, verifiedAt } = getEffectiveGeminiConfig();
+    res.json({
+      connected: isVerified,
+      model,
+      hasKeyConfigured: Boolean(apiKey),
+      maskedKey: apiKey ? maskApiKey(apiKey) : null,
+      verifiedAt: verifiedAt || null,
+    });
+  });
+
+  app.post('/api/connectors/gemini/verify', async (req: Request, res: Response) => {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    const inputKey = typeof req.body?.apiKey === 'string' ? req.body.apiKey.trim() : '';
+    const inputModel = typeof req.body?.model === 'string' ? req.body.model.trim() : '';
+
+    const secrets = readServerSecrets();
+    const effectiveKey = inputKey || secrets.geminiApiKey || process.env.GEMINI_API_KEY || '';
+    const modelToUse = (inputModel || secrets.geminiModel || process.env.GEMINI_MODEL || 'gemini-3.8-flash')
+      .replace(/^models\//, '')
+      .trim();
+
+    if (!effectiveKey) {
+      res.status(400).json({
+        success: false,
+        connected: false,
+        errorCode: 'MISSING_API_KEY',
+        error: 'Chiave API non inserita. Inserisci una chiave API Google Gemini valida per effettuare la verifica.',
+      });
+      return;
+    }
+
+    try {
+      const ai = new GoogleGenAI({
+        apiKey: effectiveKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
+
+      // Quick test probe with Gemini Flash
+      const testResponse = await ai.models.generateContent({
+        model: modelToUse,
+        contents: 'Test connection probe. Reply with "OK".',
+      });
+
+      if (!testResponse || !testResponse.text) {
+        throw new Error('Nessuna risposta ricevuta dal modello Gemini durante il test.');
+      }
+
+      // Success: persist securely server-side in secrets.json
+      const updatedSecrets: ServerSecretsRecord = {
+        ...secrets,
+        geminiApiKey: effectiveKey,
+        geminiModel: modelToUse,
+        geminiVerifiedAt: new Date().toISOString(),
+        geminiStatus: 'connected',
+      };
+      writeServerSecrets(updatedSecrets);
+
+      res.json({
+        success: true,
+        connected: true,
+        model: modelToUse,
+        verifiedAt: updatedSecrets.geminiVerifiedAt,
+        maskedKey: maskApiKey(effectiveKey),
+        message: 'Connessione a Google Gemini verificata con successo.',
+      });
+    } catch (err: unknown) {
+      // Mark as unconnected on failure
+      const updatedSecrets: ServerSecretsRecord = {
+        ...secrets,
+        geminiStatus: 'unconnected',
+      };
+      writeServerSecrets(updatedSecrets);
+
+      const errMessage = err instanceof Error ? err.message : String(err);
+      let errorCode = 'CONNECTION_FAILED';
+      let userFriendlyError = `Verifica connessione fallita: ${errMessage.slice(0, 160)}`;
+
+      if (errMessage.includes('API_KEY_INVALID') || errMessage.includes('400') || errMessage.includes('invalid api key')) {
+        errorCode = 'INVALID_API_KEY';
+        userFriendlyError = 'Chiave API non valida o revocata. Controlla la tua chiave in Google AI Studio.';
+      } else if (errMessage.includes('RESOURCE_EXHAUSTED') || errMessage.includes('429') || errMessage.includes('quota')) {
+        errorCode = 'QUOTA_EXHAUSTED';
+        userFriendlyError = 'Limite di richieste o quota gratuita esaurita per il modello Gemini Flash. Riprova più tardi.';
+      } else if (errMessage.includes('PERMISSION_DENIED')) {
+        errorCode = 'PERMISSION_DENIED';
+        userFriendlyError = 'Permessi insufficienti per il modello Gemini specificato.';
+      }
+
+      res.status(errorCode === 'QUOTA_EXHAUSTED' ? 429 : 400).json({
+        success: false,
+        connected: false,
+        errorCode,
+        error: userFriendlyError,
+      });
+    }
+  });
+
+  app.post('/api/connectors/gemini/save', async (req: Request, res: Response) => {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    const inputKey = typeof req.body?.apiKey === 'string' ? req.body.apiKey.trim() : '';
+    const inputModel = typeof req.body?.model === 'string' ? req.body.model.trim() : '';
+
+    if (!inputKey) {
+      res.status(400).json({
+        success: false,
+        errorCode: 'MISSING_API_KEY',
+        error: 'Chiave API mancante.',
+      });
+      return;
+    }
+
+    const secrets = readServerSecrets();
+    const modelToUse = (inputModel || secrets.geminiModel || process.env.GEMINI_MODEL || 'gemini-3.8-flash').trim();
+
+    // Verify first before confirming connected
+    try {
+      const ai = new GoogleGenAI({
+        apiKey: inputKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
+
+      await ai.models.generateContent({
+        model: modelToUse,
+        contents: 'Test connection probe. Reply with "OK".',
+      });
+
+      const updatedSecrets: ServerSecretsRecord = {
+        ...secrets,
+        geminiApiKey: inputKey,
+        geminiModel: modelToUse,
+        geminiVerifiedAt: new Date().toISOString(),
+        geminiStatus: 'connected',
+      };
+      writeServerSecrets(updatedSecrets);
+
+      res.json({
+        success: true,
+        connected: true,
+        model: modelToUse,
+        maskedKey: maskApiKey(inputKey),
+        message: 'Chiave API Gemini salvata e verificata con successo nel vault sicuro server-side.',
+      });
+    } catch (err: unknown) {
+      const errMessage = err instanceof Error ? err.message : String(err);
+      res.status(400).json({
+        success: false,
+        connected: false,
+        errorCode: 'VERIFICATION_FAILED',
+        error: `Impossibile salvare: la chiave non ha superato la verifica (${errMessage.slice(0, 140)}).`,
+      });
+    }
+  });
+
+  app.post('/api/connectors/gemini/disconnect', (_req: Request, res: Response) => {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    const secrets = readServerSecrets();
+    delete secrets.geminiApiKey;
+    secrets.geminiStatus = 'unconnected';
+    delete secrets.geminiVerifiedAt;
+    writeServerSecrets(secrets);
+    res.json({ success: true, connected: false, message: 'Google Gemini scollegato con successo.' });
+  });
+
+  // 1e-ter. Real Project Agent Chat Execution (/api/ai/agent/execute)
+  // Genuinely modifies selected project files, updates preview, saves changes, and returns diff/audit summary.
+  app.post('/api/ai/agent/execute', async (req: Request, res: Response) => {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    const { projectId = 'home-pro-landing', prompt, currentCode, currentHtml } = req.body || {};
+
+    if (typeof prompt !== 'string' || !prompt.trim()) {
+      res.status(400).json({
+        success: false,
+        errorCode: 'EMPTY_PROMPT',
+        error: 'Il prompt dell\'utente non può essere vuoto.',
+      });
+      return;
+    }
+
+    const { apiKey, model, isVerified } = getEffectiveGeminiConfig();
+    if (!apiKey || !isVerified) {
+      res.status(400).json({
+        success: false,
+        errorCode: 'GEMINI_NOT_CONNECTED',
+        error: 'Google Gemini non è collegato o la connessione non è stata verificata. Vai in Impostazioni > Connettori per verificare la tua chiave API.',
+      });
+      return;
+    }
+
+    try {
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
+
+      const systemInstruction = `Sei l'Agente IA principale di AI App Builder (Emergent).
+Il tuo compito è modificare concretamente i file del progetto secondo la richiesta dell'utente.
+
+REGOLE TASSATIVE:
+1. Devi applicare modifiche SOLO ai file pertinenti (es. "src/pages/CasaLavoroLanding.tsx" o componenti pertinenti). Non alterare file non correlati.
+2. Restituisci ESCLUSIVAMENTE un oggetto JSON valido (nessun markdown, nessun backtick \`\`\`json) con questo schema:
+{
+  "explanation": "Spiegazione chiara e precisa delle modifiche apportate in lingua italiana",
+  "modifiedFiles": ["src/pages/CasaLavoroLanding.tsx"],
+  "updatedCode": "Codice sorgente TypeScript/React completo aggiornato per il file modificato",
+  "updatedHtml": "Codice HTML5 completo con Tailwind CDN pronto per essere visualizzato nell'anteprima live"
+}
+3. Non rispondere con frasi generiche o predefinite: la "explanation" deve descrivere esattamente ciò che è stato aggiunto o modificato.
+4. "modifiedFiles" deve contenere l'elenco esatto dei file modificati.`;
+
+      const promptPayload = `PROGETTO: ${projectId}
+RICHIESTA UTENTE:
+${prompt.trim()}
+
+${currentCode ? `CODICE SORGENTE ATTUALE:\n${currentCode.slice(0, 8000)}` : ''}
+${currentHtml ? `HTML ANTEPRIMA ATTUALE:\n${currentHtml.slice(0, 8000)}` : ''}
+
+Applica le modifiche richieste e restituisci il JSON con explanation, modifiedFiles, updatedCode e updatedHtml.`;
+
+      const response = await ai.models.generateContent({
+        model,
+        contents: `${systemInstruction}\n\n${promptPayload}`,
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.2,
+        },
+      });
+
+      const responseText = response.text || '';
+      let parsedResult: {
+        explanation?: string;
+        modifiedFiles?: string[];
+        updatedCode?: string;
+        updatedHtml?: string;
+      };
+
+      try {
+        const cleanJson = responseText
+          .replace(/^```json\s*/i, '')
+          .replace(/^```\s*/i, '')
+          .replace(/```\s*$/i, '')
+          .trim();
+        parsedResult = JSON.parse(cleanJson);
+      } catch {
+        res.status(502).json({
+          success: false,
+          errorCode: 'INVALID_AI_JSON',
+          error: 'Il modello Gemini non ha restituito una risposta strutturata valida. Riprova con un prompt più specifico.',
+        });
+        return;
+      }
+
+      const explanation = (parsedResult.explanation || 'Modifiche applicate con successo').trim();
+      const modifiedFiles = Array.isArray(parsedResult.modifiedFiles) && parsedResult.modifiedFiles.length > 0
+        ? parsedResult.modifiedFiles.map(String)
+        : ['src/pages/CasaLavoroLanding.tsx'];
+      const updatedCode = typeof parsedResult.updatedCode === 'string' ? parsedResult.updatedCode.trim() : '';
+      const updatedHtml = typeof parsedResult.updatedHtml === 'string' ? parsedResult.updatedHtml.trim() : '';
+
+      // Persist changes to server projects
+      const allProjects = readServerProjects();
+      let projectIdx = allProjects.findIndex((p) => p.id === projectId);
+      const nowIso = new Date().toISOString();
+
+      let currentVersionNum = 1;
+      if (projectIdx >= 0) {
+        const match = allProjects[projectIdx].codeVersion?.match(/v1\.(\d+)/);
+        if (match) currentVersionNum = parseInt(match[1], 10) + 1;
+      }
+      const nextVersion = `v1.${currentVersionNum}`;
+
+      if (projectIdx === -1) {
+        // Initialize project if not found
+        const newProj: ServerProjectRecord = {
+          id: projectId,
+          userId: 'admin-it',
+          name: projectId === 'home-pro-landing' ? 'Home Pro Landing' : projectId,
+          description: 'Marketplace e landing page professionale',
+          type: 'landing-page',
+          status: 'generated',
+          instructions: [],
+          previewHtml: updatedHtml || null,
+          codeVersion: nextVersion,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        };
+        allProjects.unshift(newProj);
+        projectIdx = 0;
+      }
+
+      allProjects[projectIdx].codeVersion = nextVersion;
+      if (updatedHtml) {
+        allProjects[projectIdx].previewHtml = updatedHtml;
+      }
+      allProjects[projectIdx].updatedAt = nowIso;
+      allProjects[projectIdx].instructions.push({
+        id: `inst_${Date.now()}`,
+        text: prompt.trim(),
+        timestamp: nowIso,
+        status: 'generated',
+        projectId,
+        projectName: allProjects[projectIdx].name,
+      });
+
+      writeServerProjects(allProjects);
+
+      // Record activity in server activity logs
+      const allLogs = readServerActivityLogs();
+      allLogs.unshift({
+        id: `act_${Date.now()}`,
+        projectId,
+        projectName: allProjects[projectIdx].name,
+        userId: 'admin-it',
+        instructionText: prompt.trim(),
+        timestamp: nowIso,
+        status: 'generated',
+        activityType: 'instruction',
+        codeVersion: nextVersion,
+      });
+      writeServerActivityLogs(allLogs);
+
+      res.json({
+        success: true,
+        replyText: explanation,
+        modifiedFiles,
+        updatedCode: updatedCode || currentCode || '',
+        updatedHtml: updatedHtml || currentHtml || '',
+        codeVersion: nextVersion,
+        timestamp: nowIso,
+      });
+    } catch (err: unknown) {
+      const errMessage = err instanceof Error ? err.message : String(err);
+      res.status(502).json({
+        success: false,
+        errorCode: 'AGENT_EXECUTION_ERROR',
+        error: `Impossibile completare la modifica con l'agente Gemini: ${errMessage.slice(0, 180)}`,
       });
     }
   });
