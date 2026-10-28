@@ -22,6 +22,10 @@ import {
   Cpu,
   Lock,
   ChevronRight,
+  Menu,
+  X,
+  UserPlus,
+  LogOut,
 } from 'lucide-react';
 
 interface PublicPortalProps {
@@ -52,6 +56,7 @@ export default function PublicPortal({
   const content = PUBLIC_CONTENT[locale];
   const meta = content.meta[page];
 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [internalUser, setInternalUser] = useState<PublicAuthenticatedUser | null>(null);
   const [internalAuthLoading, setInternalAuthLoading] = useState<boolean>(
     externalAuthLoading === undefined,
@@ -127,6 +132,7 @@ export default function PublicPortal({
   ) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
     e.preventDefault();
+    setMobileMenuOpen(false);
     onNavigatePublic(
       targetLocale,
       targetPage,
@@ -137,6 +143,7 @@ export default function PublicPortal({
   const handleCustomerAreaClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
     e.preventDefault();
+    setMobileMenuOpen(false);
     if (publicUser) {
       onOpenCustomerWorkspace();
     } else {
@@ -144,27 +151,40 @@ export default function PublicPortal({
     }
   };
 
-  const navPages: { key: PublicPageKey; label: string }[] = [
+  // Top header navigation pages (Specifica Prodotto, Casi d'Uso, FAQ removed from menu as requested)
+  const menuNavPages: { key: PublicPageKey; label: string }[] = [
     { key: 'pricing', label: content.nav.pricing },
     { key: 'home', label: content.nav.home },
+  ];
+
+  // Footer navigation: Main pages
+  const footerNavPages: { key: PublicPageKey; label: string }[] = [
+    { key: 'pricing', label: content.nav.pricing },
+    { key: 'home', label: content.nav.home },
+  ];
+
+  // Footer technical resources (Specifica Prodotto, Casi d'Uso, FAQ inserted into footer as requested)
+  const footerResourcePages: { key: PublicPageKey; label: string }[] = [
     { key: 'product', label: content.nav.product },
+    { key: 'useCases', label: content.nav.useCases },
+    { key: 'faq', label: content.nav.faq },
   ];
 
   return (
     <div className="min-h-screen flex flex-col bg-surface-950 text-surface-100">
       {/* Semantic Header & Primary Navigation */}
-      <header className="sticky top-0 z-30 glass-strong border-b border-surface-800/80">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <header className="sticky top-0 z-40 glass-strong border-b border-surface-800/80">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3">
           {/* Brand Logo */}
           <a
             href={getPublicPath(locale, 'pricing')}
             onClick={(e) => handleLinkClick(e, locale, 'pricing')}
-            className="flex items-center gap-2.5 group shrink-0"
+            className="flex items-center gap-2.5 group shrink-0 min-h-[44px]"
           >
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center glow-accent">
               <Zap className="w-5 h-5 text-surface-950" fill="currentColor" />
             </div>
-            <span className="text-base font-bold text-white tracking-tight leading-none">
+            <span className="text-base sm:text-lg font-bold text-white tracking-tight leading-none">
               AI App Builder
             </span>
           </a>
@@ -174,7 +194,7 @@ export default function PublicPortal({
             aria-label="Main Navigation"
             className="hidden md:flex items-center bg-surface-900/80 border border-surface-800/80 rounded-xl p-1 gap-1"
           >
-            {navPages.map((item) => {
+            {menuNavPages.map((item) => {
               const href = getPublicPath(locale, item.key);
               const active = page === item.key;
               return (
@@ -183,9 +203,9 @@ export default function PublicPortal({
                   href={href}
                   onClick={(e) => handleLinkClick(e, locale, item.key)}
                   aria-current={active ? 'page' : undefined}
-                  className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${
                     active
-                      ? 'bg-accent-500/20 text-accent-300 shadow-sm'
+                      ? 'bg-accent-500/20 text-accent-300 shadow-sm font-semibold'
                       : 'text-surface-300 hover:text-white hover:bg-surface-800/60'
                   }`}
                 >
@@ -195,8 +215,8 @@ export default function PublicPortal({
             })}
           </nav>
 
-          {/* Right Actions: Language Switcher & Customer Access */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          {/* Right Actions: Desktop Language Switcher & Customer Access */}
+          <div className="hidden sm:flex items-center gap-2.5 shrink-0">
             <div
               className="flex items-center bg-surface-900/90 border border-surface-800 rounded-xl p-1"
               role="group"
@@ -215,7 +235,7 @@ export default function PublicPortal({
                     onClick={(e) => handleLinkClick(e, loc, page, true)}
                     aria-current={active ? 'true' : undefined}
                     title={LOCALE_LABELS[loc].label}
-                    className={`px-2 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                    className={`px-2 py-1 rounded-lg text-xs font-semibold transition-colors min-h-[32px] flex items-center ${
                       active
                         ? 'bg-accent-500 text-surface-950'
                         : 'text-surface-400 hover:text-white'
@@ -232,9 +252,10 @@ export default function PublicPortal({
                 href={getPublicPath(locale, 'register')}
                 onClick={(e) => handleLinkClick(e, locale, 'register', true)}
                 rel="nofollow"
-                className="hidden sm:inline-flex items-center px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-surface-300 hover:text-white hover:bg-surface-800/60 transition-colors"
+                className="inline-flex items-center min-h-[40px] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-accent-500/15 text-accent-300 hover:bg-accent-500/25 border border-accent-500/30 transition-colors"
               >
-                {content.nav.register}
+                <UserPlus className="w-3.5 h-3.5 mr-1.5" />
+                <span>{content.nav.register}</span>
               </a>
             )}
 
@@ -244,39 +265,158 @@ export default function PublicPortal({
               onClick={handleCustomerAreaClick}
               rel="nofollow"
               data-testid="public-header-customer-btn"
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-surface-800 hover:bg-surface-700 text-accent-300 border border-accent-500/30 transition-colors"
+              className="inline-flex items-center gap-2 min-h-[40px] px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-surface-800 hover:bg-surface-700 text-accent-300 border border-accent-500/30 transition-colors"
             >
               <Lock className="w-3.5 h-3.5" />
               <span>{publicUser ? 'Workspace' : content.nav.login}</span>
             </a>
           </div>
+
+          {/* Mobile Right Controls: Register CTA + Hamburger Button */}
+          <div className="flex md:hidden items-center gap-2">
+            {!publicUser && (
+              <a
+                href={getPublicPath(locale, 'register')}
+                onClick={(e) => handleLinkClick(e, locale, 'register', true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[40px] rounded-xl text-xs font-semibold bg-accent-500/20 text-accent-300 border border-accent-500/30"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>{content.nav.register}</span>
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label={mobileMenuOpen ? 'Chiudi menu' : 'Apri menu di navigazione'}
+              aria-expanded={mobileMenuOpen}
+              className="w-11 h-11 rounded-xl bg-surface-900 border border-surface-700 text-surface-200 hover:text-white flex items-center justify-center transition-colors active:scale-95 touch-manipulation"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5 text-accent-300" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
 
-        {/* Mobile Secondary Nav */}
-        <nav
-          aria-label="Mobile Navigation"
-          className="md:hidden border-t border-surface-800/60 px-4 py-2 flex items-center justify-center gap-2 overflow-x-auto scrollbar-thin"
-        >
-          {navPages.map((item) => {
-            const href = getPublicPath(locale, item.key);
-            const active = page === item.key;
-            return (
+        {/* Mobile Dropdown Menu Panel (Accessible, Touch Friendly) */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-surface-800 bg-surface-950/95 backdrop-blur-xl px-4 py-4 space-y-4 shadow-2xl animate-fade-in">
+            {/* Primary Nav Links */}
+            <nav aria-label="Menu Mobile" className="space-y-1">
+              {menuNavPages.map((item) => {
+                const href = getPublicPath(locale, item.key);
+                const active = page === item.key;
+                return (
+                  <a
+                    key={item.key}
+                    href={href}
+                    onClick={(e) => handleLinkClick(e, locale, item.key)}
+                    aria-current={active ? 'page' : undefined}
+                    className={`flex items-center justify-between px-4 py-3 rounded-xl text-base font-medium transition-colors min-h-[48px] ${
+                      active
+                        ? 'bg-accent-500/20 text-accent-300 font-semibold border border-accent-500/30'
+                        : 'text-surface-200 hover:text-white hover:bg-surface-800/60'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    <ChevronRight className={`w-4 h-4 ${active ? 'text-accent-400' : 'text-surface-600'}`} />
+                  </a>
+                );
+              })}
+            </nav>
+
+            {/* Language Selector in Mobile Menu */}
+            <div className="pt-3 border-t border-surface-800/80">
+              <span className="block text-xs font-mono uppercase tracking-wider text-surface-400 mb-2">
+                {content.nav.languageLabel}
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {SUPPORTED_LOCALES.map((loc) => {
+                  const active = loc === locale;
+                  const href = getPublicPath(loc, page);
+                  return (
+                    <a
+                      key={loc}
+                      href={href}
+                      hrefLang={loc}
+                      lang={loc}
+                      onClick={(e) => handleLinkClick(e, loc, page, true)}
+                      className={`flex items-center justify-center gap-1.5 min-h-[44px] px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                        active
+                          ? 'bg-accent-500 text-surface-950'
+                          : 'bg-surface-900 border border-surface-800 text-surface-300 hover:text-white'
+                      }`}
+                    >
+                      <span>{LOCALE_LABELS[loc].label}</span>
+                      <span className="opacity-70">({LOCALE_LABELS[loc].native})</span>
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Customer Auth Actions in Mobile Menu */}
+            <div className="pt-3 border-t border-surface-800/80 space-y-2">
               <a
-                key={item.key}
-                href={href}
-                onClick={(e) => handleLinkClick(e, locale, item.key)}
-                aria-current={active ? 'page' : undefined}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
-                  active
-                    ? 'bg-accent-500/15 text-accent-300'
-                    : 'text-surface-400 hover:text-white'
-                }`}
+                href={publicUser ? '/workspace' : getPublicPath(locale, 'login')}
+                onClick={(e) => handleCustomerAreaClick(e)}
+                className="w-full min-h-[48px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold bg-surface-900 hover:bg-surface-800 text-white border border-surface-700 transition-colors"
               >
-                {item.label}
+                <Lock className="w-4 h-4 text-accent-400" />
+                <span>{publicUser ? 'Apri Workspace Cliente' : content.nav.login}</span>
               </a>
-            );
-          })}
-        </nav>
+
+              {!publicUser ? (
+                <a
+                  href={getPublicPath(locale, 'register')}
+                  onClick={(e) => handleLinkClick(e, locale, 'register', true)}
+                  className="w-full min-h-[48px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-accent-500 to-accent-600 text-surface-950 glow-accent transition-all"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>{content.nav.register}</span>
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handlePublicLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-medium text-surface-400 hover:text-white transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Disconnetti</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Quick Horizontal Nav Bar on Mobile (when menu is collapsed) */}
+        {!mobileMenuOpen && (
+          <nav
+            aria-label="Navigazione Rapida Sezioni"
+            className="md:hidden border-t border-surface-800/60 px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto scrollbar-thin"
+          >
+            {menuNavPages.map((item) => {
+              const href = getPublicPath(locale, item.key);
+              const active = page === item.key;
+              return (
+                <a
+                  key={item.key}
+                  href={href}
+                  onClick={(e) => handleLinkClick(e, locale, item.key)}
+                  aria-current={active ? 'page' : undefined}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap min-h-[38px] flex items-center transition-colors ${
+                    active
+                      ? 'bg-accent-500/20 text-accent-300 font-semibold border border-accent-500/30'
+                      : 'text-surface-400 hover:text-white bg-surface-900/50'
+                  }`}
+                >
+                  {item.label}
+                </a>
+              );
+            })}
+          </nav>
+        )}
       </header>
 
       {/* Breadcrumb Navigation */}
@@ -602,6 +742,183 @@ export default function PublicPortal({
             </div>
           )}
 
+          {/* USE CASES PAGE (Including Course Landing Page & Registration Module) */}
+          {page === 'useCases' && (
+            <div className="space-y-12">
+              <section aria-labelledby="usecases-intro-heading" className="glass border border-surface-800/80 rounded-2xl p-5 sm:p-6 space-y-3">
+                <h2 id="usecases-intro-heading" className="text-xl sm:text-2xl font-bold text-white">
+                  {content.useCases.introTitle}
+                </h2>
+                <p className="text-sm sm:text-base text-surface-200 leading-relaxed">
+                  {content.useCases.introBody}
+                </p>
+              </section>
+
+              {/* Use Cases Cards: 1 col on mobile, 2 cols on tablet/desktop */}
+              <section aria-labelledby="usecases-cards-heading" className="space-y-6">
+                <h2 id="usecases-cards-heading" className="text-xl sm:text-2xl font-bold text-white">
+                  Scenari di Prototipazione e Creazione
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+                  {content.useCases.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="glass border border-surface-800/80 rounded-2xl p-5 sm:p-6 flex flex-col justify-between space-y-5"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className="text-xs font-mono uppercase tracking-wider text-accent-300 bg-accent-500/10 border border-accent-500/20 px-2.5 py-1 rounded-md">
+                            {item.projectType}
+                          </span>
+                        </div>
+                        <h3 className="text-lg sm:text-xl font-bold text-white">{item.title}</h3>
+                        <div className="space-y-2 text-xs sm:text-sm text-surface-300">
+                          <div>
+                            <strong className="text-surface-200 block text-xs font-semibold uppercase tracking-wider text-surface-400 mb-0.5">
+                              Destinatari
+                            </strong>
+                            <p>{item.targetAudience}</p>
+                          </div>
+                          <div>
+                            <strong className="text-surface-200 block text-xs font-semibold uppercase tracking-wider text-surface-400 mb-0.5">
+                              Esigenza risolta
+                            </strong>
+                            <p>{item.problemSolved}</p>
+                          </div>
+                          <div>
+                            <strong className="text-surface-200 block text-xs font-semibold uppercase tracking-wider text-surface-400 mb-0.5">
+                              Come funziona
+                            </strong>
+                            <p>{item.howItWorks}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-surface-900/90 border border-surface-800/90 space-y-1">
+                        <span className="text-[11px] font-mono text-accent-400 uppercase tracking-wider block">
+                          Esempio di istruzione / prompt:
+                        </span>
+                        <p className="text-xs font-mono text-surface-300 leading-relaxed italic">
+                          &ldquo;{item.examplePrompt}&rdquo;
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Responsive Comparison Section: Cards on mobile/tablet, table on desktop */}
+              <section aria-labelledby="comparison-heading" className="space-y-6">
+                <div className="space-y-2">
+                  <h2 id="comparison-heading" className="text-xl sm:text-2xl font-bold text-white">
+                    {content.useCases.comparisonTitle}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-surface-400 leading-relaxed">
+                    {content.useCases.comparisonSubtitle}
+                  </p>
+                </div>
+
+                {/* Mobile & Tablet Card View (Zero Horizontal Scroll) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden">
+                  {content.useCases.comparisonRows.map((row, idx) => (
+                    <div
+                      key={idx}
+                      className="glass border border-surface-800/80 rounded-2xl p-5 space-y-3"
+                    >
+                      <h3 className="text-sm font-bold text-white border-b border-surface-800 pb-2">
+                        {row.criterion}
+                      </h3>
+                      <div className="space-y-2 text-xs">
+                        <div className="p-2.5 rounded-lg bg-accent-500/10 border border-accent-500/20 space-y-1">
+                          <span className="font-semibold text-accent-300 block">
+                            {content.useCases.comparisonHeaders.aiAppBuilder}:
+                          </span>
+                          <p className="text-surface-100">{row.aiAppBuilder}</p>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-surface-900 border border-surface-800 space-y-1">
+                          <span className="font-semibold text-surface-400 block">
+                            {content.useCases.comparisonHeaders.traditionalCoding}:
+                          </span>
+                          <p className="text-surface-300">{row.traditionalCoding}</p>
+                        </div>
+                        <div className="p-2.5 rounded-lg bg-surface-900 border border-surface-800 space-y-1">
+                          <span className="font-semibold text-surface-400 block">
+                            {content.useCases.comparisonHeaders.staticPageBuilders}:
+                          </span>
+                          <p className="text-surface-300">{row.staticPageBuilders}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden lg:block overflow-hidden rounded-2xl border border-surface-800 glass">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-surface-800 bg-surface-900/80 text-surface-300">
+                        <th className="p-4 font-semibold w-1/4">
+                          {content.useCases.comparisonHeaders.criterion}
+                        </th>
+                        <th className="p-4 font-semibold text-accent-300 w-1/4">
+                          {content.useCases.comparisonHeaders.aiAppBuilder}
+                        </th>
+                        <th className="p-4 font-semibold text-surface-400 w-1/4">
+                          {content.useCases.comparisonHeaders.traditionalCoding}
+                        </th>
+                        <th className="p-4 font-semibold text-surface-400 w-1/4">
+                          {content.useCases.comparisonHeaders.staticPageBuilders}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-surface-800/60 text-surface-300">
+                      {content.useCases.comparisonRows.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-surface-800/30 transition-colors">
+                          <td className="p-4 font-semibold text-white">{row.criterion}</td>
+                          <td className="p-4 text-accent-100 bg-accent-500/5">{row.aiAppBuilder}</td>
+                          <td className="p-4 text-surface-400">{row.traditionalCoding}</td>
+                          <td className="p-4 text-surface-400">{row.staticPageBuilders}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          )}
+
+          {/* FAQ PAGE */}
+          {page === 'faq' && (
+            <div className="space-y-8">
+              <section aria-labelledby="faq-intro-heading" className="glass border border-surface-800/80 rounded-2xl p-5 sm:p-6">
+                <p id="faq-intro-heading" className="text-sm sm:text-base text-surface-200 leading-relaxed">
+                  {content.faq.intro}
+                </p>
+              </section>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+                {content.faq.items.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="glass border border-surface-800/80 rounded-2xl p-5 sm:p-6 space-y-3 flex flex-col justify-between"
+                  >
+                    <div className="space-y-2">
+                      <span className="text-[11px] font-mono uppercase tracking-wider text-accent-400">
+                        {item.category}
+                      </span>
+                      <h2 className="text-base sm:text-lg font-bold text-white leading-snug">
+                        {item.question}
+                      </h2>
+                    </div>
+                    <p className="text-xs sm:text-sm text-surface-300 leading-relaxed pt-2 border-t border-surface-800/60">
+                      {item.answer}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* PRICING, REGISTRATION, LOGIN & CHECKOUT FLOW */}
           {(page === 'pricing' ||
             page === 'register' ||
@@ -625,7 +942,7 @@ export default function PublicPortal({
       <footer className="border-t border-surface-800/80 bg-surface-950/90 mt-16">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-            <div className="md:col-span-5 space-y-3">
+            <div className="md:col-span-4 space-y-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center">
                   <Zap className="w-4 h-4 text-surface-950" fill="currentColor" />
@@ -649,17 +966,22 @@ export default function PublicPortal({
               <p className="text-xs text-surface-400 pt-1">{content.footer.adminNotice}</p>
             </div>
 
-            <div className="md:col-span-3 space-y-2.5">
+            {/* Pagine Principali */}
+            <div className="md:col-span-2 space-y-2.5">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-white">
                 {content.footer.navigationTitle}
               </h2>
-              <ul className="space-y-1.5 text-xs">
-                {navPages.map((item) => (
+              <ul className="space-y-2 text-xs">
+                {footerNavPages.map((item) => (
                   <li key={item.key}>
                     <a
                       href={getPublicPath(locale, item.key)}
                       onClick={(e) => handleLinkClick(e, locale, item.key)}
-                      className="text-surface-400 hover:text-accent-300 transition-colors"
+                      className={`block py-0.5 transition-colors ${
+                        page === item.key
+                          ? 'text-accent-300 font-semibold'
+                          : 'text-surface-400 hover:text-accent-300'
+                      }`}
                     >
                       {item.label}
                     </a>
@@ -667,8 +989,52 @@ export default function PublicPortal({
                 ))}
                 <li>
                   <a
+                    href={getPublicPath(locale, 'register')}
+                    onClick={(e) => handleLinkClick(e, locale, 'register', true)}
+                    className="block py-0.5 text-surface-400 hover:text-accent-300 transition-colors"
+                  >
+                    {content.nav.register}
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href={publicUser ? '/workspace' : getPublicPath(locale, 'login')}
+                    onClick={handleCustomerAreaClick}
+                    className="block py-0.5 text-surface-400 hover:text-accent-300 transition-colors"
+                  >
+                    {publicUser ? 'Workspace' : content.nav.login}
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Specifiche Prodotto, Casi d'Uso & FAQ (Inserite nel Footer) */}
+            <div className="md:col-span-3 space-y-2.5">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-white flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-accent-400" />
+                <span>{content.footer.resourcesTitle}</span>
+              </h2>
+              <ul className="space-y-2 text-xs">
+                {footerResourcePages.map((item) => (
+                  <li key={item.key}>
+                    <a
+                      href={getPublicPath(locale, item.key)}
+                      onClick={(e) => handleLinkClick(e, locale, item.key)}
+                      className={`flex items-center gap-1.5 py-0.5 transition-colors ${
+                        page === item.key
+                          ? 'text-accent-300 font-semibold'
+                          : 'text-surface-300 hover:text-accent-300'
+                      }`}
+                    >
+                      <ChevronRight className="w-3 h-3 text-accent-400/80 shrink-0" />
+                      <span>{item.label}</span>
+                    </a>
+                  </li>
+                ))}
+                <li className="pt-2 border-t border-surface-800/60">
+                  <a
                     href="/sitemap.xml"
-                    className="text-surface-400 hover:text-accent-300 transition-colors font-mono"
+                    className="text-surface-400 hover:text-accent-300 transition-colors font-mono text-[11px]"
                   >
                     /sitemap.xml
                   </a>
@@ -676,7 +1042,7 @@ export default function PublicPortal({
                 <li>
                   <a
                     href="/robots.txt"
-                    className="text-surface-400 hover:text-accent-300 transition-colors font-mono"
+                    className="text-surface-400 hover:text-accent-300 transition-colors font-mono text-[11px]"
                   >
                     /robots.txt
                   </a>
@@ -684,7 +1050,8 @@ export default function PublicPortal({
               </ul>
             </div>
 
-            <div className="md:col-span-4 space-y-2.5">
+            {/* Lingue */}
+            <div className="md:col-span-3 space-y-2.5">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-white">
                 {content.footer.languagesTitle}
               </h2>
@@ -696,7 +1063,7 @@ export default function PublicPortal({
                       hrefLang={loc}
                       lang={loc}
                       onClick={(e) => handleLinkClick(e, loc, page)}
-                      className={`inline-flex items-center gap-1.5 ${
+                      className={`inline-flex items-center gap-1.5 py-1 min-h-[32px] ${
                         loc === locale
                           ? 'text-accent-300 font-semibold'
                           : 'text-surface-400 hover:text-white'

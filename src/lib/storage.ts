@@ -307,15 +307,55 @@ export function saveActivityLogs(logs: ActivityLogEntry[], userId?: string): voi
   }
 }
 
-export function serializeSettingsForStorage(settings: AppSettings): AppSettings {
-  // Never persist GitHub Personal Access Tokens in localStorage
+export function migrateAiSettings(ai?: Partial<AppSettings['ai']>): {
+  ai: AppSettings['ai'];
+  migrated: boolean;
+} {
+  let migrated = false;
+  const provider = ai?.provider || '';
+  const apiKey = ai?.apiKey || '';
+  let model = ai?.model ? ai.model.trim() : '';
+  let endpoint = ai?.endpoint ? ai.endpoint.trim() : '';
+
+  if (model.startsWith('models/')) {
+    model = model.replace(/^models\//, '');
+    migrated = true;
+  }
+
+  // Automatically migrate legacy gemini-2.5-flash to gemini-3.8-flash
+  if (model === 'gemini-2.5-flash') {
+    model = 'gemini-3.8-flash';
+    migrated = true;
+  }
+
+  // For gemini or managed providers with missing or legacy model, default to gemini-3.8-flash
+  if ((provider === 'gemini' || provider === 'managed') && (!model || model === 'gemini-2.5-flash')) {
+    model = 'gemini-3.8-flash';
+    migrated = true;
+  }
+
+  // Clear legacy /v1beta/models endpoint for Gemini
+  if (provider === 'gemini' && endpoint.includes('/v1beta/models')) {
+    endpoint = '';
+    migrated = true;
+  }
+
   return {
     ai: {
-      provider: settings.ai?.provider || '',
-      apiKey: settings.ai?.apiKey || '',
-      model: settings.ai?.model || '',
-      endpoint: settings.ai?.endpoint || '',
+      provider,
+      apiKey,
+      model,
+      endpoint,
     },
+    migrated,
+  };
+}
+
+export function serializeSettingsForStorage(settings: AppSettings): AppSettings {
+  // Never persist GitHub Personal Access Tokens in localStorage; ensure AI settings are migrated
+  const { ai } = migrateAiSettings(settings.ai);
+  return {
+    ai,
     github: {
       username: settings.github?.username || '',
       token: '',
@@ -333,8 +373,9 @@ export function loadSettings(): AppSettings {
     const raw = window.localStorage.getItem(STORAGE_KEYS.SETTINGS);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw);
+    const { ai: migratedAi, migrated } = migrateAiSettings(parsed?.ai);
     const loaded: AppSettings = {
-      ai: { ...DEFAULT_SETTINGS.ai, ...parsed.ai },
+      ai: migratedAi,
       github: {
         username: typeof parsed.github?.username === 'string' ? parsed.github.username : '',
         // Always scrub any previously stored GitHub token from memory and storage
@@ -345,8 +386,8 @@ export function loadSettings(): AppSettings {
         sidebarStyle: parsed.theme?.sidebarStyle || 'navy',
       },
     };
-    // If legacy storage contained a persisted GitHub token, overwrite it immediately with the scrubbed version
-    if (parsed?.github?.token) {
+    // If legacy storage contained a persisted GitHub token or required Gemini migration, persist updated settings immediately
+    if (parsed?.github?.token || migrated) {
       window.localStorage.setItem(
         STORAGE_KEYS.SETTINGS,
         JSON.stringify(serializeSettingsForStorage(loaded)),

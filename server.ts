@@ -1633,9 +1633,24 @@ async function startServer() {
         return;
       }
 
-      const ai = new GoogleGenAI({ apiKey: effectiveGeminiKey });
-      const modelToUse =
-        (isGeminiByok || isAdminSession) && customModel ? customModel : 'gemini-2.5-flash';
+      const ai = new GoogleGenAI({
+        apiKey: effectiveGeminiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          },
+        },
+      });
+
+      // Default model & server fallback: gemini-3.8-flash
+      let modelToUse =
+        (isGeminiByok || isAdminSession) && customModel ? customModel.trim() : 'gemini-3.8-flash';
+      // Strip any "models/" prefix if present
+      modelToUse = modelToUse.replace(/^models\//, '').trim();
+      // Migrate legacy gemini-2.5-flash to gemini-3.8-flash
+      if (!modelToUse || modelToUse === 'gemini-2.5-flash') {
+        modelToUse = 'gemini-3.8-flash';
+      }
 
       const response = await ai.models.generateContent({
         model: modelToUse,

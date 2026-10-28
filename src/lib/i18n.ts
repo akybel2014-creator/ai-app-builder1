@@ -238,6 +238,7 @@ export interface LocaleContent {
     crawlerPolicyTitle: string;
     crawlerPolicyText: string;
     navigationTitle: string;
+    resourcesTitle: string;
     languagesTitle: string;
     adminNotice: string;
   };
@@ -599,7 +600,8 @@ export const PUBLIC_CONTENT: Record<PublicLocale, LocaleContent> = {
       legalNoticeText: 'Progetto software open-source importato da GitHub (autore/repository: akybel2014-creator/ai-app-builder). Nessun prezzo commerciale o abbonamento a pagamento è applicato da questa interfaccia.',
       crawlerPolicyTitle: 'Politica Crawler di Ricerca e Sistemi AI',
       crawlerPolicyText: 'I crawler di ricerca standard e gli user-agent AI sono ammessi sulle pagine pubbliche localizzate (/it/, /en/, /de/, /fr/) come documentato in /robots.txt. L\'area amministrativa (/admin) è riservata e non indicizzabile.',
-      navigationTitle: 'Pagine Pubbliche',
+      navigationTitle: 'Pagine Principali',
+      resourcesTitle: 'Specifiche e Risorse',
       languagesTitle: 'Versioni Linguistiche',
       adminNotice: 'La Dashboard Amministratore è disponibile esclusivamente in italiano.',
     },
@@ -959,7 +961,8 @@ export const PUBLIC_CONTENT: Record<PublicLocale, LocaleContent> = {
       legalNoticeText: 'Open-source software project imported from GitHub (author/repository: akybel2014-creator/ai-app-builder). No commercial pricing or paid subscription is charged by this interface.',
       crawlerPolicyTitle: 'Search & AI Crawler Policy',
       crawlerPolicyText: 'Standard search engine crawlers and AI user-agents are permitted on localized public pages (/it/, /en/, /de/, /fr/) as configured in /robots.txt. The administrative area (/admin) is restricted and non-indexable.',
-      navigationTitle: 'Public Pages',
+      navigationTitle: 'Main Pages',
+      resourcesTitle: 'Specifications & Resources',
       languagesTitle: 'Language Versions',
       adminNotice: 'The Administrator Dashboard is exclusively available in Italian.',
     },
@@ -1319,7 +1322,8 @@ export const PUBLIC_CONTENT: Record<PublicLocale, LocaleContent> = {
       legalNoticeText: 'Aus GitHub importiertes Open-Source-Softwareprojekt (Autor/Repository: akybel2014-creator/ai-app-builder). Über diese Oberfläche werden keine kommerziellen Preise oder kostenpflichtigen Abonnements abgerechnet.',
       crawlerPolicyTitle: 'Richtlinie für Such- und KI-Crawler',
       crawlerPolicyText: 'Standard-Suchmaschinen-Crawler und KI-User-Agents sind auf den lokalisierten öffentlichen Seiten (/it/, /en/, /de/, /fr/) gemäß /robots.txt zugelassen. Der Administrationsbereich (/admin) ist geschützt und nicht indexierbar.',
-      navigationTitle: 'Öffentliche Seiten',
+      navigationTitle: 'Hauptseiten',
+      resourcesTitle: 'Spezifikationen & Ressourcen',
       languagesTitle: 'Sprachversionen',
       adminNotice: 'Das Administrator-Dashboard ist ausschließlich auf Italienisch verfügbar.',
     },
@@ -1679,7 +1683,8 @@ export const PUBLIC_CONTENT: Record<PublicLocale, LocaleContent> = {
       legalNoticeText: 'Projet logiciel open-source importé depuis GitHub (auteur/dépôt : akybel2014-creator/ai-app-builder). Aucun tarif commercial ni abonnement payant n\'est facturé par cette interface.',
       crawlerPolicyTitle: 'Politique relative aux Crawlers de Recherche et d\'IA',
       crawlerPolicyText: 'Les robots d\'indexation standards et les agents utilisateurs d\'IA sont autorisés sur les pages publiques localisées (/it/, /en/, /de/, /fr/) conformément à /robots.txt. L\'espace administrateur (/admin) est restreint et non indexable.',
-      navigationTitle: 'Pages Publiques',
+      navigationTitle: 'Pages Principales',
+      resourcesTitle: 'Spécifications & Ressources',
       languagesTitle: 'Versions Linguistiques',
       adminNotice: 'Le Tableau de Bord Administrateur est disponible exclusivement en italien.',
     },

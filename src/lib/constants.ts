@@ -48,15 +48,15 @@ export const AI_PROVIDERS = [
   {
     id: 'managed' as const,
     name: 'Proxy Backend Gestito (Senza chiave)',
-    models: ['gemini-2.5-flash', 'gemini-2.5-pro'],
+    models: ['gemini-3.8-flash', 'gemini-2.5-pro'],
     defaultEndpoint: '/api/ai/generate',
     docsUrl: '',
   },
   {
     id: 'gemini' as const,
     name: 'Google Gemini (BYOK)',
-    models: ['gemini-2.5-flash', 'gemini-2.5-pro'],
-    defaultEndpoint: 'https://generativelanguage.googleapis.com/v1beta/models',
+    models: ['gemini-3.8-flash', 'gemini-2.5-pro'],
+    defaultEndpoint: '',
     docsUrl: 'https://aistudio.google.com/app/apikey',
   },
   {

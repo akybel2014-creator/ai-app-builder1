@@ -945,11 +945,17 @@ export default function AdminPanel({
                 <ProviderCard
                   name="Google Gemini"
                   providerId="gemini"
-                  models={['gemini-2.5-flash', 'gemini-2.5-pro']}
+                  models={['gemini-3.8-flash', 'gemini-2.5-pro']}
                   description="Modelli multimodali veloci e ad alta capacità di ragionamento tramite Google AI Studio."
                   isSelected={settings.ai.provider === 'gemini'}
                   hasKey={settings.ai.provider === 'gemini' && Boolean(settings.ai.apiKey)}
-                  selectedModel={settings.ai.provider === 'gemini' ? settings.ai.model : 'gemini-2.5-flash'}
+                  selectedModel={
+                    settings.ai.provider === 'gemini'
+                      ? settings.ai.model === 'gemini-2.5-flash'
+                        ? 'gemini-3.8-flash'
+                        : settings.ai.model || 'gemini-3.8-flash'
+                      : 'gemini-3.8-flash'
+                  }
                   statusLabel={
                     settings.ai.provider === 'gemini' && settings.ai.apiKey
                       ? 'Chiave salvata localmente (Non verificata sul server)'

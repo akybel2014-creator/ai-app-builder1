@@ -688,28 +688,28 @@ export default function PricingCheckoutFlow({
 
   // Top bar showing current public user session or links to Register / Login
   const renderUserStatusStrip = () => (
-    <div className="glass border border-surface-800/80 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+    <div className="glass border border-surface-800/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={() => onNavigatePublic(locale, 'home')}
-          className="inline-flex items-center gap-1.5 text-xs font-medium text-surface-300 hover:text-accent-300 transition-colors"
+          className="inline-flex items-center gap-1.5 min-h-[40px] px-2 py-1 text-xs sm:text-sm font-medium text-surface-300 hover:text-accent-300 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           <span>{t.backToHome}</span>
         </button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3">
         {user ? (
           <>
-            <div className="inline-flex items-center gap-2 text-xs text-surface-200 bg-surface-900/90 border border-surface-700 px-3 py-1.5 rounded-xl">
-              <User className="w-3.5 h-3.5 text-accent-400" />
-              <span>
+            <div className="inline-flex items-center gap-2 text-xs sm:text-sm text-surface-200 bg-surface-900/90 border border-surface-700 px-3 py-2 rounded-xl overflow-hidden min-h-[40px]">
+              <User className="w-4 h-4 text-accent-400 flex-shrink-0" />
+              <span className="truncate">
                 {t.loggedInAs}: <strong className="text-white">{user.email}</strong>
               </span>
               {user.activeSubscription && (
-                <span className="ml-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-mono text-[10px]">
+                <span className="ml-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-mono text-[10px] flex-shrink-0">
                   {user.activeSubscription.planId}
                 </span>
               )}
@@ -718,7 +718,7 @@ export default function PricingCheckoutFlow({
               type="button"
               data-testid="open-customer-workspace-btn"
               onClick={onOpenCustomerWorkspace}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-accent-500 text-surface-950 hover:bg-accent-400 transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-accent-500 text-surface-950 hover:bg-accent-400 transition-colors"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>{t.openWorkspaceLabel}</span>
@@ -732,7 +732,7 @@ export default function PricingCheckoutFlow({
                     period: pendingSelection.billingPeriod,
                   })
                 }
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-surface-800 border border-accent-500/40 text-accent-300 hover:bg-surface-700 transition-colors"
+                className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-surface-800 border border-accent-500/40 text-accent-300 hover:bg-surface-700 transition-colors"
               >
                 <CreditCard className="w-3.5 h-3.5" />
                 <span>{t.goToCheckoutForSelected}</span>
@@ -741,7 +741,7 @@ export default function PricingCheckoutFlow({
             <button
               type="button"
               onClick={onUserLogout}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-surface-800 hover:bg-surface-700 text-surface-300 hover:text-white transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2 rounded-xl text-xs sm:text-sm font-medium bg-surface-800 hover:bg-surface-700 text-surface-300 hover:text-white transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span>{t.logoutLabel}</span>
@@ -760,7 +760,7 @@ export default function PricingCheckoutFlow({
                     : undefined,
                 )
               }
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium bg-surface-800 hover:bg-surface-700 text-surface-200 hover:text-white transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-medium bg-surface-900 sm:bg-surface-800 hover:bg-surface-700 text-surface-200 hover:text-white border border-surface-700/80 transition-colors"
             >
               <LogIn className="w-3.5 h-3.5 text-accent-400" />
               <span>{t.alreadyHaveAccount}</span>
@@ -776,7 +776,7 @@ export default function PricingCheckoutFlow({
                     : undefined,
                 )
               }
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-accent-500/20 border border-accent-500/40 text-accent-300 hover:bg-accent-500/30 transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-accent-500/20 border border-accent-500/40 text-accent-300 hover:bg-accent-500/30 transition-colors"
             >
               <UserPlus className="w-3.5 h-3.5" />
               <span>{t.createAnAccount}</span>
@@ -789,9 +789,9 @@ export default function PricingCheckoutFlow({
 
   // Render Pricing Cards Grid (used on 'pricing' page, and as fallback when checkout/auth has an invalid/missing plan)
   const renderPricingCards = () => (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {/* Billing period selector */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass border border-surface-800/80 rounded-2xl p-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass border border-surface-800/80 rounded-2xl p-4 sm:p-5">
         <div className="space-y-1">
           <span className="text-xs font-mono uppercase tracking-wider text-accent-400">
             {t.billingToggleLabel}
@@ -800,7 +800,7 @@ export default function PricingCheckoutFlow({
         </div>
 
         <div
-          className="inline-flex items-center p-1 rounded-xl bg-surface-900 border border-surface-800 self-start sm:self-center"
+          className="inline-flex items-center p-1 rounded-xl bg-surface-900 border border-surface-800 w-full sm:w-auto justify-center"
           role="group"
           aria-label={t.billingToggleLabel}
         >
@@ -813,7 +813,7 @@ export default function PricingCheckoutFlow({
                 if (updated.valid && updated.selection) persistSelection(updated.selection);
               }
             }}
-            className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-lg text-xs font-semibold transition-all min-h-[40px] ${
               billingPeriod === 'monthly'
                 ? 'bg-accent-500 text-surface-950'
                 : 'text-surface-400 hover:text-white'
@@ -830,7 +830,7 @@ export default function PricingCheckoutFlow({
                 if (updated.valid && updated.selection) persistSelection(updated.selection);
               }
             }}
-            className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-lg text-xs font-semibold transition-all min-h-[40px] ${
               billingPeriod === 'annual'
                 ? 'bg-accent-500 text-surface-950'
                 : 'text-surface-400 hover:text-white'
@@ -841,8 +841,8 @@ export default function PricingCheckoutFlow({
         </div>
       </div>
 
-      {/* Pricing Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+      {/* Pricing Cards: 1 col on mobile, 2 on tablet, 3 on desktop */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 items-stretch">
         {PLAN_ORDER.map((planId) => {
           const plan = TRUSTED_PLANS[planId];
           const tr = plan.translations[locale];
@@ -856,7 +856,7 @@ export default function PricingCheckoutFlow({
             <div
               key={plan.id}
               data-testid={`pricing-card-${plan.id}`}
-              className={`glass rounded-2xl p-6 flex flex-col justify-between border transition-all ${
+              className={`glass rounded-2xl p-5 sm:p-6 flex flex-col justify-between border transition-all ${
                 isFree
                   ? 'border-emerald-500/40 bg-emerald-950/10'
                   : isSelected
@@ -885,7 +885,7 @@ export default function PricingCheckoutFlow({
                 </div>
 
                 <div className="p-4 rounded-xl bg-surface-900/90 border border-surface-800 space-y-1">
-                  <div className="text-2xl font-bold text-white">
+                  <div className="text-2xl sm:text-3xl font-bold text-white">
                     {tr.priceDisplay[billingPeriod]}
                   </div>
                   <div className="text-xs text-surface-400">{tr.periodLabel[billingPeriod]}</div>
@@ -934,7 +934,7 @@ export default function PricingCheckoutFlow({
                   type="button"
                   data-testid={`choose-plan-${plan.id}`}
                   onClick={() => handleChoosePlan(plan.id)}
-                  className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all ${
+                  className={`w-full min-h-[46px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.99] touch-manipulation ${
                     isFree
                       ? 'bg-gradient-to-r from-accent-500 to-accent-600 text-surface-950 hover:from-accent-400 hover:to-accent-500 glow-accent'
                       : 'bg-surface-800 hover:bg-surface-700 text-white border border-accent-500/40'
@@ -956,7 +956,7 @@ export default function PricingCheckoutFlow({
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       {renderUserStatusStrip()}
 
       {/* Invalid Plan ID warning banner */}
@@ -976,11 +976,11 @@ export default function PricingCheckoutFlow({
         </div>
       )}
 
-      {/* Selected Plan Preservation Banner (shown on Register / Login / Pricing when a valid plan is pending) */}
+      {/* Selected Plan Preservation Banner */}
       {selectedPlanDef && pendingSelection && page !== 'checkout' && (
         <div
           data-testid="preserved-plan-banner"
-          className="p-4 rounded-2xl bg-accent-500/10 border border-accent-500/30 flex flex-wrap items-center justify-between gap-4"
+          className="p-4 rounded-2xl bg-accent-500/10 border border-accent-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4"
         >
           <div className="flex items-center gap-3">
             <Sparkles className="w-5 h-5 text-accent-400 flex-shrink-0" />
@@ -1006,7 +1006,7 @@ export default function PricingCheckoutFlow({
                   period: pendingSelection.billingPeriod,
                 })
               }
-              className="text-xs font-semibold text-accent-300 hover:text-white underline"
+              className="text-xs font-semibold text-accent-300 hover:text-white underline min-h-[36px] inline-flex items-center"
             >
               {t.changePlanLabel}
             </button>
@@ -1017,9 +1017,9 @@ export default function PricingCheckoutFlow({
       {/* 1. PUBLIC PRICING PAGE */}
       {page === 'pricing' && renderPricingCards()}
 
-      {/* 2. REGISTRATION & LOGIN PAGES */}
+      {/* 2. REGISTRATION & LOGIN PAGES (Mobile-First Full Width Form) */}
       {(page === 'register' || page === 'login') && (
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {!selectedPlanDef && (
             <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
               <Info className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
@@ -1032,9 +1032,10 @@ export default function PricingCheckoutFlow({
             </div>
           )}
 
-          <div className="max-w-md mx-auto glass border border-surface-800/80 rounded-2xl p-6 sm:p-8 space-y-6">
+          {/* Form container: full width on smartphone, elegant centered card on tablet & desktop */}
+          <div className="w-full max-w-full sm:max-w-md md:max-w-lg mx-auto glass border border-surface-800/80 rounded-2xl p-5 sm:p-7 md:p-8 space-y-5 sm:space-y-6 shadow-xl">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-accent-500/15 border border-accent-500/30 flex items-center justify-center">
+              <div className="w-11 h-11 rounded-xl bg-accent-500/15 border border-accent-500/30 flex items-center justify-center flex-shrink-0">
                 {page === 'register' ? (
                   <UserPlus className="w-5 h-5 text-accent-400" />
                 ) : (
@@ -1042,20 +1043,20 @@ export default function PricingCheckoutFlow({
                 )}
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">
+                <h2 className="text-lg sm:text-xl font-bold text-white">
                   {page === 'register' ? t.registerSubmit : t.loginSubmit}
                 </h2>
-                <p className="text-xs text-surface-400">{t.emailVerificationNote}</p>
+                <p className="text-xs text-surface-400 mt-0.5">{t.emailVerificationNote}</p>
               </div>
             </div>
 
             <form
               onSubmit={(e) => handleAuthSubmit(e, page === 'register' ? 'register' : 'login')}
-              className="space-y-4"
+              className="space-y-4 sm:space-y-5"
             >
               {page === 'register' && (
                 <div>
-                  <label className="block text-xs font-medium text-surface-300 mb-1.5">
+                  <label className="block text-sm font-medium text-surface-200 mb-1.5">
                     {t.nameLabel}
                   </label>
                   <input
@@ -1066,13 +1067,13 @@ export default function PricingCheckoutFlow({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder={t.namePlaceholder}
-                    className="w-full px-4 py-2.5 rounded-xl bg-surface-900 border border-surface-700 text-white text-sm placeholder:text-surface-500 focus:outline-none focus:border-accent-500"
+                    className="w-full px-4 py-3 min-h-[48px] rounded-xl bg-surface-900 border border-surface-700 text-white text-base sm:text-sm placeholder:text-surface-500 focus:outline-none focus:border-accent-400 focus-visible:ring-2 focus-visible:ring-accent-400/40 transition-colors"
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-xs font-medium text-surface-300 mb-1.5">
+                <label className="block text-sm font-medium text-surface-200 mb-1.5">
                   {t.emailLabel}
                 </label>
                 <input
@@ -1081,12 +1082,12 @@ export default function PricingCheckoutFlow({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t.emailPlaceholder}
-                  className="w-full px-4 py-2.5 rounded-xl bg-surface-900 border border-surface-700 text-white text-sm placeholder:text-surface-500 focus:outline-none focus:border-accent-500"
+                  className="w-full px-4 py-3 min-h-[48px] rounded-xl bg-surface-900 border border-surface-700 text-white text-base sm:text-sm placeholder:text-surface-500 focus:outline-none focus:border-accent-400 focus-visible:ring-2 focus-visible:ring-accent-400/40 transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-surface-300 mb-1.5">
+                <label className="block text-sm font-medium text-surface-200 mb-1.5">
                   {t.passwordLabel}
                 </label>
                 <input
@@ -1096,35 +1097,35 @@ export default function PricingCheckoutFlow({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={t.passwordPlaceholder}
-                  className="w-full px-4 py-2.5 rounded-xl bg-surface-900 border border-surface-700 text-white text-sm placeholder:text-surface-500 focus:outline-none focus:border-accent-500"
+                  className="w-full px-4 py-3 min-h-[48px] rounded-xl bg-surface-900 border border-surface-700 text-white text-base sm:text-sm placeholder:text-surface-500 focus:outline-none focus:border-accent-400 focus-visible:ring-2 focus-visible:ring-accent-400/40 transition-colors"
                 />
               </div>
 
               {formError && (
                 <div
                   role="alert"
-                  className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-300 flex items-center gap-2"
+                  className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/40 text-xs sm:text-sm text-red-200 flex items-start gap-2.5 animate-fade-in"
                 >
-                  <AlertTriangle className="w-4 h-4 flex-shrink-0 text-red-400" />
-                  <span>{formError}</span>
+                  <AlertTriangle className="w-5 h-5 flex-shrink-0 text-red-400 mt-0.5" />
+                  <span className="leading-relaxed">{formError}</span>
                 </div>
               )}
 
               <button
                 type="submit"
                 disabled={formSubmitting}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-accent-500 to-accent-600 text-surface-950 font-semibold text-sm hover:from-accent-400 hover:to-accent-500 transition-all glow-accent disabled:opacity-50"
+                className="w-full min-h-[48px] flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-gradient-to-r from-accent-500 to-accent-600 text-surface-950 font-semibold text-base sm:text-sm hover:from-accent-400 hover:to-accent-500 transition-all glow-accent disabled:opacity-50 active:scale-[0.99] touch-manipulation cursor-pointer"
               >
                 {formSubmitting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-5 h-5" />
                 )}
                 <span>{page === 'register' ? t.registerSubmit : t.loginSubmit}</span>
               </button>
             </form>
 
-            <div className="pt-4 border-t border-surface-800 text-center text-xs text-surface-400">
+            <div className="pt-4 border-t border-surface-800 text-center text-xs sm:text-sm text-surface-400 leading-relaxed">
               {page === 'register' ? (
                 <>
                   <span>{t.switchToLoginPrompt} </span>
@@ -1142,7 +1143,7 @@ export default function PricingCheckoutFlow({
                           : undefined,
                       )
                     }
-                    className="text-accent-300 hover:text-white font-semibold underline"
+                    className="text-accent-300 hover:text-white font-semibold underline min-h-[40px] inline-flex items-center px-1"
                   >
                     {t.switchToLoginLink}
                   </button>
@@ -1164,7 +1165,7 @@ export default function PricingCheckoutFlow({
                           : undefined,
                       )
                     }
-                    className="text-accent-300 hover:text-white font-semibold underline"
+                    className="text-accent-300 hover:text-white font-semibold underline min-h-[40px] inline-flex items-center px-1"
                   >
                     {t.switchToRegisterLink}
                   </button>

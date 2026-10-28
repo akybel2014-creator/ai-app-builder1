@@ -507,12 +507,14 @@ export default function App(props: AppProps) {
         />
 
         <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
-          <MobileHeader
-            currentView={view}
-            currentProject={currentProject}
-            onNavigate={handleNavigateWorkspaceView}
-            onOpenPublicSite={handleReturnToPublic}
-          />
+          {view !== 'editor' && (
+            <MobileHeader
+              currentView={view}
+              currentProject={currentProject}
+              onNavigate={handleNavigateWorkspaceView}
+              onOpenPublicSite={handleReturnToPublic}
+            />
+          )}
 
           <main className="flex-1 overflow-hidden">
             {view === 'dashboard' && (
@@ -544,6 +546,7 @@ export default function App(props: AppProps) {
                 onExportLogEntry={store.exportLogEntry}
                 onGoToSettings={() => setView('settings')}
                 onOpenShortcuts={() => setShortcutsOpen(true)}
+                onUpdateAI={store.updateAISettings}
               />
             )}
 
@@ -638,12 +641,14 @@ export default function App(props: AppProps) {
               />
 
               <div className="flex-1 lg:ml-64 flex flex-col min-h-screen">
-                <MobileHeader
-                  currentView={view}
-                  currentProject={currentProject}
-                  onNavigate={handleNavigateWorkspaceView}
-                  onOpenPublicSite={handleReturnToPublic}
-                />
+                {view !== 'editor' && (
+                  <MobileHeader
+                    currentView={view}
+                    currentProject={currentProject}
+                    onNavigate={handleNavigateWorkspaceView}
+                    onOpenPublicSite={handleReturnToPublic}
+                  />
+                )}
 
                 <main className="flex-1 overflow-hidden">
                   {view === 'dashboard' && (
@@ -675,6 +680,7 @@ export default function App(props: AppProps) {
                       onExportLogEntry={store.exportLogEntry}
                       onGoToSettings={() => setView('settings')}
                       onOpenShortcuts={() => setShortcutsOpen(true)}
+                      onUpdateAI={store.updateAISettings}
                     />
                   )}
 
